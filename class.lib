@@ -1,0 +1,832 @@
+
+
+
+#_________________________________________________________________
+# CLASS v4.0 ( 2024.8.6 ) ########################################
+#
+#	zz
+#
+#_________________________________________________________________
+BEGIN{ ###########################################################
+
+	envmod( "class" ) }
+
+	@namespace	"class"
+
+#_________________________________________________________________
+func	init( f,A ) { ##############################################
+
+	# _APICLASS[ api ][ class ]
+	#			[ class ]
+	#
+	# _CLASSAPI[ class ][ api ]
+	#			  [ api ]
+	#_____________________________
+
+	# if a function exist in an local namespace and exist in awk namespace then this is api
+	# found: uid::init; if init in awk:: then init is api
+
+	"" in _APICLASS in _CLASSAPI in _APITAB
+
+	for ( f in FUNCTAB )
+
+		if ( match( f, /^([^:]*)::([A-Z_a-z][0-9A-Z_a-z]*)$/, A ) )
+
+			if ( A[ 2 ] in FUNCTAB )
+
+				_APICLASS[ A[ 2 ] ][ A[ 1 ] ] _CLASSAPI[ A[ 1 ] ][ A[ 2 ] ] }
+
+patsplit( t, T, /[A-Z_a-z][0-9A-Z_a-z]/ )
+
+for ( t = 1; t in T; t++ )
+
+	
+
+@namespace "def"
+#_________________________________________________________________
+func	class( p, px, sx, pp, l ,f,ff,r,A ) { ########################
+
+	# defines new class
+	#
+	#	to implement method of the class user should define function with the name:
+	#
+	#		class::method
+	#
+	#	for example if we want to implement method 'w' for the class 'mNumber' then we
+	#	should define function with the name: 'mNumber::w'
+	#
+	#	this function is the actual method code for the class.
+	#
+	#	the class definition includes method inheritance from the parent.
+	#	this is done by creating false records in the system array _FUNCTAB.
+	#
+	#	the system array _FUNCTAB contains physical function names as the data while
+	#	indexes
+	#
+	#	the class definition includes creating 
+	#
+	#	method-functions are called with the specified parameter set depending
+	#	from the method itself. however - there is simple code solution for checking
+	#	is given pointer's class have the method handler functions or not:
+	#
+	#		if ( _isapi( "method", pointer ) )
+	#
+	#			@fn( pointer, ... )
+	#
+	# p			- defined class name
+	#
+	#			the class names is used as the class pointers
+	#
+	#			if `p == "" or `p ~/^\^/ then independent class definition with no parent class
+	#
+	# px			- uid's prefix char
+	#
+	# sx			- uid's suffix char
+	#
+	#			if px/sx == "" then px/sx = "  " (same px/sx as for the parent)
+	#
+	#			if length of the px/sx is equals to 1 (single character) then
+	#			px/sx = " " px/sx	(first character of the px/sx is the same as
+	#			for the parent)
+	#
+	#			now every space character ( ' ' ) in the px/sx of the defined class
+	#			will be replaced by the appropriate character from the px/sx of the
+	#			parent class.
+	#			if appropriated character is not exist in the px/sx of the parent
+	#			class then space character in px/sx of the defined class will be
+	#			deleted.
+	#
+	#			note that if defined class have unique px and sx then defined class
+	#			will have it's own morgue and uid-generator configured as "independent,
+	#			based on the parent's character set".
+	#
+	#			if defined class have non-unique px and sx (some classes that was already 
+	#			defined have exactly the same px and sx) - then defined class morgue
+	#			will be the same as for oldiest class with the same px and sx.
+	#			the uid-generator in that case will be configured as "linked with oldiest
+	#			class with the same px and sx
+	#			
+	# pp/cs		- in case if independent class definition ( `p == "" || `p ~ /^\^/ ):
+	#
+	#				`cs is the part of regular expression that is matches only with the
+	#				characters that are will be used as the character set for uid-generator:
+	#
+	#					"\xD0-\xF6"		- means use characters in range: \xD0-\xF6
+	#								as the character set for the uid-genearator
+	#
+	#
+	#			- otherwise `pp is the parent class name
+	#
+	#			if omitted ( == "" ) then base class will be used as the parent class
+	#
+	# 
+	#
+	#	the base class is the class with the empty name ( == "" ).
+	#	it is defined by default. so even at class definition: if parent class
+	#	is not specified then base class will be used as the parent class
+	#
+	#	the base class have independent uid-generator based on the specified character set.
+	#	by default it is characters in range: [\xD0-\xF6]
+	#
+	#	all other classes uid-generators are always based on the same character set as it's parent.
+	#
+	#	the base class uid-generator have the following structure:
+	#
+	#		\x7F \x00 [\xD0-\xF6]{4} \x89 \x00
+	#
+	#	if prefix/suffix is omitted ( == "" ) then prefix/suffix = "  "
+	#
+	#	every space character in prefix/suffix strings are will be replaced
+	#	by the appropriate characters from the prefix/suffix striung of the
+	#	parent class
+	#
+	#	for example if parent class have prefix "\x7F\x10" and we're defining
+	#	chield class with the prefix == " \x11" - then final prefix string for defined class will
+	#	be == "\x7F\x11" ( first space character replaced by the first character
+	#	of the prefix string of the parent class )
+	#
+	#	note that if both prefix and suffix strings are equals to "  " (same
+	#	prefix/suffix string as its defined for parent class) - then class
+	#	will be defined using morgue and uid-generator defined for parent class.
+	#
+	#	otherwise defined class will then have it's own morgue and it's own
+	#	uid-generator based on the same character set that is used by the uid-generator
+	#	of the parent class.
+	#
+	# altparent = `pp
+	# if parameter `sx is the uidgen-ptr then suffix will be _UIDSFX[ `sx ]. altparent = `sx
+	# if parameter `px is the uidgen-ptr then prefix will be _UIDPFX[ `px ]. altparent = `px
+	# if parameter `pp is omitted ( == "" ) then `pp = altparent
+	#
+	# add pfx+sfx already existing checking 
+	#
+	#_____________________________
+
+	p = _lrspctaboff( p )
+
+	if ( p in _CLASS )
+
+		return def_err( p, "class @1 redefinition!" )
+
+	DEF_PSPTR = ""
+
+	px = def_psfx( px, pp, uid::_UIDPFX )
+
+	sx = def_psfx( sx, pp, uid::_UIDSFX )
+
+	if ( pp == "" )
+
+		pp = DEF_PSPTR
+
+	pp = ( p == "" || sub( /^\^/, "", p ) )			\
+			?	def_independent( p, px, sx, pp, l )	\
+			:	def_chield( p, px, sx, pp ) 
+	#_______________________
+
+	_leta( _CLASS[ p ] = p, _CLASSMORG )
+
+	CLASSPTR[ p ] = pp
+
+	def_rexpmac( p, px, sx, pp )
+
+	if ( _isfunc( "_class__" p ) )
+
+		@fn( p, pp )
+
+	return p }
+	#_____________________________
+
+	func	def_independent( p, px, sx, cs, l ) {
+
+		# base/independent class definition
+		#
+		#	class( "^Name", px, sx, cs, l )
+		#
+		#		px, sx	- uidgen prefix/suffix string or ptr
+		#		cs		- character set inclusion regexp
+		#		l		- uid-gen part length (in chars)
+		#_________________
+
+		_traceClass( "define independent class: @1", p )
+
+		uid::set( p, px, sx, l, cs )
+
+		return "" }
+	#_____________________________
+
+	func	def_chield( p, px, sx, pp ) {
+
+		# chield class definition
+		#
+		#	class( "Name", px, sx, pp )
+		#
+		#		px, sx	- uidgen prefix/suffix string or ptr
+		#		pp		- parent class name
+		#_________________
+
+		_traceClass( "define chield class: @1", p )
+
+		if ( ! ( pp in _CLASS ) )
+
+			return def_err( p, "undefined! parent class: @2", pp )
+
+		uid::setcs( p, px, sx, pp )
+
+		def_apinherit( p, pp )
+
+		return pp }
+	#_____________________________
+
+	func	def_rexpmac( p, px, sx, pp ,r ) {
+
+		# rexpmac class definitions:
+		#
+		#	class			- defined class pointer
+		#	parent		- parent & chield classes pointer
+		#_________________
+
+		r = "(" px "...." sx ")"
+
+		_rexpmac( p, r )
+
+		_rexpmac( pp, "{ " p " }" ) }
+	#_____________________________
+
+	func	 def_psfx( t, pp, A ) {
+
+		if ( t in A )
+
+			return A[ DEF_PSPTR = t ]
+
+		else	if ( t == "" )
+
+				t = "  "
+
+			else	if ( index( t, ":" ) == 1 )
+
+						t = substr( t, 2 )
+
+				else	if ( length( t ) == 1 )
+
+						t = " " t
+
+		return orstr( t, A[ pp ] ) }
+	#_____________________________
+
+	func	def_apinherit( c, pp ,f,ac,ap ) {
+
+		# define personal or inherited method functions 
+		#
+		#	c		- defined class
+		#	pc		- parent class
+		#_________________
+
+		for ( f in _APICLASS ) {
+
+			ac = c "::" f			# ac	- class::api
+
+			ap = pp "::" f			# ap	- parent::api
+
+			if ( ac in FUNCTAB )
+
+				# defined class have it's own method handler
+
+				_FUNCTAB[ ac ] = ac
+
+			else	
+
+				# defined class is not have it's own method handler
+
+				if ( ap in _FUNCTAB )
+
+					_FUNCTAB[ ac ] = _FUNCTAB[ ap ]
+
+			if ( ap in _FUNCTAB )
+
+				# if parent class have it's own method handler (or inherited from it's parents)
+
+				_APITAB[ ac ] = _FUNCTAB[ ap ] } }
+	#___________________________________
+
+	func	def_err( p, t, p0,p1,p2,p3 ) {
+
+		return fatal( "def @1: " t, p, p0,p1,p2 ) }
+
+
+
+#___________________________________________________________
+func	_movpa( p, L ) { #####################################			????
+
+	for ( l in L )
+
+		_defiav( p, SYMTAB[ letia( l, SYMTAB ) ], L[ l ] )
+
+	return p }
+#_________________________________________________________________
+##################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@namespace "api"
+
+#_________________________________________________________________
+func	class::def( n, px, sx
+
+	#	class::def( ... )
+	#_____________________________
+
+
+
+	CLASS[ p ] = p
+
+	delete _MORGUE[ p ][ _MORGUE[ p ][ "" ] ]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#___________________________________________________________
+func	_getptr( pp ,p,pm ) { ################################
+
+	if ( "" != p = _MORGUE[ pm = CLASS[ pp ] ][ "" ] ) {
+
+		_MORGUE[ pm ][ "" ] = _MORGUE[ pm ][ p ]
+
+		delete _MORGUE[ pm ][ p ] }
+
+	else	p = uid::get( pp )
+
+	return p }
+
+
+
+
+
+#_________________________________________________________________
+func	isapi( p, a ) { ############################################
+	
+	#
+	#_____________________________
+
+	if ( p in CLASS )
+
+		a = p "::" a
+
+	else	if ( p in CLASSPTR )
+
+			a = CLASSPTR[ p ] "::" a
+
+		else	return
+
+	if ( a in _FUNCTAB )
+
+		return api = _FUNCTAB[ a ] }
+
+
+#_________________________________________________________________
+func	create( p, pp ,pm ) { ######################################
+
+	# gate: create ptr of the class:
+	#
+	#	if `p is the class pointer (class name) then it's will be used for 
+	#	creating new pointer
+	#
+	#	otherwise `p is the exact pointer of the created pointer
+	#	and `pp is the parent class pointer
+	#_____________________________
+
+	if ( p in CLASS ) {
+
+		pp = p
+
+		p = "" }
+
+	else	if ( ! ( pp in CLASS ) )
+
+			return create_err( "undefined! class: @1'", pp )
+
+	if ( p == "" )
+
+		p = _getptr( pp )
+
+	CLASSPTR[ p ] = pp
+
+	if ( isapi( p, "create" ) )
+
+		return @api( p )
+
+	return p }
+
+	#___________________________________
+
+	func	create_err( t, p, p0,p1,p2 ) {
+
+		return fatal( "create: " t, p, p0,p1,p2 ) }
+
+#_________________________________________________________________
+func	w( p, t, D,P,G,X,Y ) { #####################################
+
+	#
+	#_____________________________
+
+	if ( p in CLASS )
+
+		p = create( p )
+
+	else if ( ! ( p in CLASSPTR ) )
+
+			return w_err( "not a pointer: @1'", p )
+
+	if ( isapi( p, "w" ) )
+
+		return @api( p, t, D,P,G,X,Y )
+
+	return p }
+
+	#___________________________________
+
+	func	w_err( t, p, p0,p1,p2 ) {
+
+		return fatal( "w: " t, p, p0,p1,p2 ) }
+
+#_________________________________________________________________
+func	kill( p ,pp,pm,t ) { #######################################
+
+	#
+	#_____________________________
+
+	if ( p in CLASS )
+
+		return kill_err( "class can't be killed", p )
+
+	if ( ! ( p in CLASSPTR ) )
+
+		return kill_err( "not a pointer: @1'", p )
+
+	if ( isapi( p, "kill" ) )
+
+		t = @api( p )
+
+	pp = CLASSPTR[ p ]
+
+	delete CLASSPTR[ p ]
+
+	pm = CLASS[ pp ]
+
+	_MORGUE[ pm ][ _MORGUE[ pm ][ "" ] = p ] = _MORGUE[ pm ][ "" ]
+
+	return t }
+
+	#___________________________________
+
+	func	kill_err( t, p, p0,p1,p2 ) {
+
+		return fatal( "kill: " t, p, p0,p1,p2 ) }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#_________________________________________________________________
+func	fatal( t, p0,p1,p2,p3 ) { ##################################
+
+	return awk::_fatal( "class: " t, p0,p1,p2,p3 ) }
+
+#___________________________________________________________
+func	_traceClass( t, a,b,c,d ) { ##########################
+
+	_conl( _unparam( t, a,b,c,d ) ) }
+
+#___________________________________________________________
+func	gensub( r, rp, m, s ) { ##############################
+
+	return awk::gensub( r, rp, m, s ) }
+
+#___________________________________________________________
+func	sub( r, rp, s ) { ####################################
+
+	return awk::sub( r, rp, s ) }
+
+#___________________________________________________________
+func	_leta( i, A ) { ######################################
+
+	return awk::_leta( i, A ) }
+
+#___________________________________________________________
+func	_rexpmac( a, b ) { ###################################
+
+	return awk::_rexpmac( a, b ) }
+
+#___________________________________________________________
+func	_lrspctaboff( t ) { ##################################
+
+	return gensub( /^[\x09\x20\xA0]+|[\x09\x20\xA0]+$/, "", "G", t ) }
+
+#___________________________________________________________
+func	_isfunc( a, b ) { ####################################
+
+	return awk::_isfunc( a, b ) }
+
+#___________________________________________________________
+func	orstr( a, b ) { ######################################
+
+	return awk::_orcs( a, b ) }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#_________________________________________________________________
+##################################################################
+
+
+	special namespace "api" is containing method's gate functions that's names
+	are not containing character "_"
+	
+	# method is 
+
+
+	func	init( f,A ) {
+
+		#
+		#
+		#	array NAMESPACE contains all namespaces as an indexes
+		#
+		#		NAMESPACE[ "uid" ]
+		#
+		#	all elements in NAMESPACE is subarrays containing internal 
+		#	namespace names as the indexes and it's types as the value
+		#	the type value may be:
+		#
+		#		fn		- name is function
+		#		arr		- name is array
+		#		var		- name is var
+		#
+		#		example:
+		#
+		#			NAMESPACE[ "awk" ][ "split" ]		== "func"
+		#			NAMESPACE[ "awk" ][ "BINMODE" ]	== "var"
+		#			NAMESPACE[ "awk" ][ "PROCINFO" ]	== "arr"
+		#
+		#	there is special namespace called "api". it's containing
+		#	method's gate-functions. all funcs in namespace "api"
+		#	that are do not containing character "_" in it's names -
+		#	are the method's gate-functions
+		#
+		#	all method names is stored in array _API
+		#
+		#_____________________________
+
+		"" in _API
+
+		letia( "api", NAMESPACE )
+		letia( "awk", NAMESPACE )
+		letia( ""	, NAMESPACE )
+
+		#_________________
+
+		for ( f in FUNCTAB ) {
+
+			_FUNCTAB[ f ] = f
+
+			match( f, /^(([^:]+)::)?(.*)$/, A )
+
+			NAMESPACE[ A[ 2 ] ][ A[ 3 ] ] = "fn" }
+		#_________________
+
+		for ( f in NAMESPACE[ "api" ] )
+
+			if ( ! index( f, "_" ) )
+
+				_API[ f ]
+		#_________________
+
+		for ( f in _API )
+
+			for ( n in NAMESPACE )
+
+				if ( f in NAMESPACE[ n ] ) {
+
+					_APICLASS[ f ][ n ]
+
+					_CLASSAPI[ n ][ f ] }
+
+		#_________________
+
+		for ( f in SYMTAB ) {
+
+			match( f, /^(([^:]+)::)?(.*)$/, A )
+
+			f = typeof( SYMTAB[ f ] ) == "array" ? "arr" : "var"
+
+			if ( f == "array" )
+
+				SYMARR[ A[ 2 ] "::" A[ 3 ] ]
+
+			NAMESPACE[ A[ 2 ] ][ A[ 3 ] ] = f }
+		#_________________
+
+		arr::letaa( NAMESPACE[ "awk" ], NAMESPACE[ "" ] ) }
+
+
+
+	#	SYMARR	- contains all arrays in SYMTAB
+
+
+
+
+
+
+
+
+isapi( ptr, api )
+setup API
+
+return IS == p !!!!!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

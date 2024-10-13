@@ -1,2 +1,2 @@
 # CLASS
- User-level library that is containing class implementation for AWK
+ User-level library containing class implementation for AWK
