@@ -1,43 +1,50 @@
 ﻿## Summary
 
-arr is the awk user-level library for works with an arrays:
+class is the user-level awk library containing class implemantation for awk
 
-      - array joining functions: 
+      - class definition
 
-            - best performance
+	- class typeid
 
-            - large amount of data
+	- class pointers
 
-            - ret::a          join single array
+		- class morgue
 
-            - ret::as         join single array with separator
+	- base method implementation
 
-            - ret::ab         join array pair
+	- api method calling
 
-            - ret::abs        join array-pairs with separator
+		- is::api
 
-      - array definition and data movement functions
+	- method inheritance
 
-            - mov/def/let copy methods
+	- base methods:
 
-      - other array functions
+		- create
 
-            - arr::same
+		- copy
 
-            - arr::name
+		- kill
+
+		- wr
+
+		- rd
+
+	- base OOP technics in AWK
+
 
 ## How to use
 
-Include file 'arr.lib' in your gawk project.
+Include file 'class.lib' in your gawk project.
 
-Library isn't requiring initialization so the place of including library is not critical
+Init...
 
 
 ## Extra
 
-File 'arr_en.pdf' contains english documentation about this library.
+File 'class_en.pdf' contains english documentation about this library.
 
-File 'arr_ru.pdf' contains russian documentation about this library.
+File 'class_ru.pdf' contains russian documentation about this library.
 
 
 
@@ -59,6 +66,6 @@ Denis Shirokov (digi_cs)
 
 *Github*:
 
-    https://github.com/digics/ARR
+    https://github.com/digics/CLASS
 
 
