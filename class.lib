@@ -1,0 +1,522 @@
+
+
+
+#_______________________________________________________________________
+# CLASS v1.0 ( 2024.10.7 ) #############################################
+#
+#	by digi_cs 2024
+#
+#
+#	PLEASE DOWNLOAD LATEST VERSION FROM: github.com/digics/CLASS
+#
+#_______________________________________________
+#
+#	- 
+#
+#_________________________________________________________________
+func	envmod::class( C ) { #######################################
+
+	# environment registration: class
+	#
+	#_____________________________
+
+	C[ "rq" ]		= "uid hid arr"
+
+}#________________________________________________________________
+##################################################################
+
+@namespace   "class"
+
+#_______________________________________________________________________
+BEGIN{ #################################################################
+
+	init0()
+
+#implement base class away from ""
+
+#ukazatel na klass: prosto uid::get() ???
+# ?? fully define base class fields ???
+
+}#________________________________________________________________
+func	init0(  f,A ) { ############################################
+
+	if ( ! init0_f ) {
+
+		init0_f = 1
+
+		SEP_ 			= hid( "SEP_" )
+
+		ERR_OUT		= "/dev/stderr"
+		#_________________
+
+		if ( _ALLPTR_ == "" )
+
+			#_ALLPTR_ = @/\x7F[\xC0-\xEF]{6}\xFF|\x0D[\xC0-\xEF]{4}\x0A/
+
+			_ALLPTR_ = @/[a-z][\xC0-\xEF]{4}[a-z]/
+		#_________________
+
+		for ( f in FUNCTAB )
+
+			if ( f in FUNC::TAB ) {
+
+				if ( isnull( FUNC::TAB[ f ] ) )
+
+					delete FUNC::TAB[ f ] }
+
+			else {
+
+				FUNC::TAB[ f ] = f
+
+				match( f, /^(([^:]*)::)?([A-Z_a-z][0-9A-Z_a-z]*)$/, A )
+
+				NAMESPACE[ A[ 2 ] ][ A[ 3 ] ] = "func" }
+
+		mov::aa( _API, NAMESPACE[ let::ia( "_", NAMESPACE ) ] )
+		#_________________
+
+		let::ia( CLASSPTR[ "" ] = "", _PTRLIST )
+
+		# CLASS[ "" ] = ??
+
+		f = "class::"
+
+		FUNC::TAB[ "::class" ]		= f "class"
+		FUNC::TAB[ "::isapi" ]		= f "isapi"
+		FUNC::TAB[ "::create" ]		= f "create"
+		FUNC::TAB[ "::kill" ]		= f "kill" } }
+
+#_______________________________________________________________________
+func	_::class( n, px, sx, pp ,p,a,ap ) { ##############################
+
+	#	n		defined class name
+	#	px		uid prefix
+	#	sx		uid suffix
+	#	pp		parent class ptr
+	#_____________________________
+
+	if ( ! init0_f )
+
+		init0()
+
+	if ( n in _NAMEPTR )
+
+		return class_err( "class name @1 redefinition!", n )
+
+	if ( ! ( pp in CLASSPTR ) )
+
+		return class_err( "undefined! parent class: @1", pp )
+	#_______________________
+
+	a = n "::class"
+
+	ap = _NAME[ CLASSPTR[ pp ] ] "::class"
+
+	if ( a in FUNC::TAB ) {
+
+		API = FUNC::TAB[ a ]
+
+		if ( API != FUNC::TAB[ ap ] )
+
+			_APITAB[ API ] = FUNC::TAB[ ap ] }
+
+	else
+
+		API = FUNC::TAB[ a ] = FUNC::TAB[ ap ]
+
+	p = uid::get()
+
+	return @API( p, n, pp, px, sx ) }
+
+	#_____________________________
+
+	func	class_err( t, p0,p1,p2,p3 ) {
+
+		return fatal( "_::class: " t, p0,p1,p2,p3 ) }
+
+	#_______________________________________________
+	func	class( p, n, pp, px, sx ,t ) { ###########
+
+		# base class definition
+
+		print "class::class( " p ", " n ", " pp ", " px ", " sx " )"
+
+		_CLASSPTR_		= add( _CLASSPTR_, "|", p )
+
+		CLASSPTR[ p ] = CLASSPTR[ n ] = p	
+
+		CLASS[ p ] = pp
+
+		_NAME[ p ] = n
+
+		_NAMEPTR[ n ] = p
+
+		class_apinherit( p, pp )
+		#_______________________
+
+		t =	( _PREFIX[ p ] = px )	\
+			SEP_				\
+			( _SUFFIX[ p ] = sx )
+
+		if ( t in _PFXSFX )
+
+			_SRCPTR[ p ] = _PFXSFX[ t ]
+
+		else	uid::setcs( \
+				let::ia( \
+					_PFXSFX[ t ] = _SRCPTR[ p ] = p, _PTRLIST ), px, sx, pp )
+
+		return p }
+
+		#_____________________________
+
+		func	class_apinherit( p, pp ,m,ac,ap ) {
+
+			# define personal or inherited method functions 
+			#
+			#	p		- defined class (ptr)
+			#	pp		- parent class (ptr)
+			#_________________
+
+			p = _NAME[ CLASSPTR[ p ] ]
+
+			pp = _NAME[ CLASSPTR[ pp ] ]
+
+			for ( m in _API ) {
+
+				ac = p "::" m					# ac	- class::method
+
+				ap = pp "::" m					# ap	- parent::method
+
+				if ( ac in FUNC::TAB ) {
+
+					if ( ap in FUNC::TAB )
+
+						if ( FUNC::TAB[ ac ] != FUNC::TAB[ ap ] )
+
+							_APITAB[ FUNC::TAB[ ac ] ] = FUNC::TAB[ ap ] }
+
+				else
+
+					if ( ap in FUNC::TAB )
+
+						FUNC::TAB[ ac ] = FUNC::TAB[ ap ] } }
+
+#___________________________________________________________
+func	_::isapi( p, m ,n ) { ################################
+	
+	# return true in case if globvar API contains physical func name that
+	# should be called
+	#
+	#	is::api( ptr, method )
+	#	is::api( API )
+	#	is::api()
+	#_____________________________
+
+	if ( ! init0_f )
+
+		init0()
+
+	print
+
+	if ( m == "" )
+
+		if ( p == "" ) {
+
+			if ( API in _APITAB )
+
+				return API = _APITAB[ API ] }
+
+		else	if ( p in _APITAB )
+
+				return API = _APITAB[ p ]
+
+	if ( p in CLASSPTR )
+
+		n = _NAME[ CLASSPTR[ p ] ]
+
+	else	if ( p in CLASS )
+
+			n = _NAME[ CLASSPTR[ CLASS[ p ] ] ]
+
+		else	return
+
+	API = FUNC::TAB[ n "::isapi" ]
+
+	API = @API( p, m, n )
+
+	print
+
+	return API }
+
+	#_______________________________________________
+	func	isapi( p, m, n ) { #######################
+
+		print "class::isapi( " p ", " m ", " n " )"
+
+		n = n "::" m
+
+		if ( n in FUNC::TAB )
+
+			return FUNC::TAB[ n ] }
+
+#___________________________________________________________
+func	_::create( pp, p ,r,q,t,P,D ) { ######################
+
+	# gate: create ptr of the class pp
+	#
+	#_____________________________
+
+	if ( ! init0_f )
+
+		init0()
+
+	if ( pp in CLASSPTR ) {
+
+		_::isapi( pp, "create" )
+
+		return @API( pp, p ) }
+
+	r = _CLASSPTR_
+
+	t = pp " "
+
+	while ( ( t != pp ) && ( q = patsplit( t = pp, P, r, D ) ) ) {
+
+		for ( pp = 1; pp <= q; pp++ )
+
+			if ( ( p = P[ pp ] ) in CLASSPTR )
+
+				P[ pp ] = _::create( p )
+
+		pp = ret::ab( P, D ) }
+
+	return pp }
+
+	#_______________________________________________
+	func	create( pp, p ) { ########################
+
+		#	pp	class
+		#	p	if != "" then p will be exact pointer string
+		#_____________________________
+
+		print "class::create(" pp ")"
+
+		if ( p == "" )
+
+			p = create_getptr( pp )
+
+		CLASS[ p ] = pp
+
+		return p }
+		#_____________________________
+
+		func	create_getptr( pp ,p ) {
+
+			pp = _SRCPTR[ pp ]
+
+			if ( "" != p = _PTRLIST[ pp ][ "" ] ) {
+
+				_PTRLIST[ pp ][ "" ] = _PTRLIST[ pp ][ p ]
+
+				delete _PTRLIST[ pp ][ p ] }
+
+			else	p = uid::get( pp )
+
+			return p }
+
+#___________________________________________________________
+func	_::kill( p, r ,pp,q,t,P,D ) { ########################
+
+	#	r	- pointer regex (if == "" then r = _ALLPTR_ )
+	#
+	#_____________________________
+
+	if ( ! init0_f )
+
+		init0()
+
+	if ( p == "" )
+
+		return p
+
+	if ( p in CLASSPTR )
+
+		return p
+
+	if ( p in CLASS ) {
+
+		_::isapi( p, "kill" )
+
+		t = @API( p, r ) }
+
+	else {
+
+		if ( r == "" )
+
+			r = _ALLPTR_
+
+		t = p; p = p " "
+
+		while ( ( t != p ) && ( q = patsplit( p = t, P, r, D ) ) ) {
+
+			print "ZHPP" ++ZHPP
+
+			for ( t = 1; t <= q; t++ )
+
+				if ( ( p = P[ t ] ) in CLASS )
+
+					P[ t ] = _::kill( p, r )
+
+			t = ret::ab( P, D ) } }
+
+	return t }
+
+	#_______________________________________________
+	func	kill( p, r ,pp ) { #######################
+
+		print "class::kill(" p ")"
+
+		pp = _SRCPTR[ CLASSPTR[ CLASS[ p ] ] ]
+
+		delete CLASS[ p ]
+
+		_PTRLIST[ pp ][ _PTRLIST[ pp ][ "" ] = p ] = _PTRLIST[ pp ][ "" ] }
+
+#_______________________________________________________________________
+func	fatal( t, p1,p2,p3,p4 ) { ########################################
+
+	ERRNO = message( t, p1,p2,p3,p4 )
+
+	if ( ERR_OUT ) {
+
+		ERRNO = "fatal: " ERRNO
+
+		print ERRNO >> ERR_OUT
+
+		fflush( ERR_OUT )
+		
+		exit }
+
+	ERRNO = "error: " ERRNO }
+
+#___________________________________________________________
+func	message( t, p1,p2,p3,p4 ) { ##########################
+
+	gsub( /@1/, msg_0( p1 ), t )
+	gsub( /@2/, msg_0( p2 ), t )
+	gsub( /@3/, msg_0( p3 ), t )
+	gsub( /@4/, msg_0( p4 ), t )
+
+	gsub( /!/, "", t )
+
+	return t }
+	#_____________________________
+
+	func	msg_0( p ) {
+
+		switch ( awk::typeof( p ) ) {
+
+			case "untyped":
+
+				return "-"
+
+			case "array":
+
+				return "A[]"
+
+			case "undefined":
+
+				return "-"
+
+			default:
+
+				return p "" } }
+
+#___________________________________________________________
+func	typeof( p ) { ########################################
+
+	return awk::typeof( p ) }
+
+#___________________________________________________________
+func	patsplit( t, A, r, B ) { #############################
+
+	return awk::patsplit( t, A, r, B ) }
+
+#___________________________________________________________
+func	add( t, r, n ) { #####################################
+
+	if ( t == "" )
+
+		return n
+
+	return t r n }
+
+#___________________________________________________________
+func	isnull( p ) { ########################################
+
+	switch ( typeof( p ) ) {
+
+		case "array":
+
+			return
+
+		case "untyped":
+
+		case "undefined":
+
+			return "U" } }
+
+#___________________________________________________________
+func	hid( n, c ) { ########################################
+
+	if ( "hid::get" in FUNCTAB )
+
+		return hid::get( n, c )
+
+	if ( n == "" )
+
+		n = "HID" ++_hid_cnt
+
+	if ( n in _NAMECODE )
+
+		return _NAMECODE[ n ]
+
+	if ( c == "" )
+
+		c = "\xFE" n "\xFE"
+
+	_NAMECODE[ HID[ c ] = n ] = c
+
+	return c }
+
+#_________________________________________________________________
+func	_::w( p, t, D,P,G,X,Y ) { ##################################
+
+	if ( p in CLASSPTR )
+
+		p = _::create( p )
+
+	else
+
+		if ( ! ( p in CLASS ) )
+
+			return p
+
+	if ( _::isapi( p, "w" ) )
+
+		return @API( p, t, D,P,G,X,Y )
+
+	return p }
+
+#___________________________________________________________
+func	_::copy( p, t, D,P,G,X,Y ) { #########################
+
+
+
+	return p }
+
+#_______________________________________________________________________
+########################################################################
+
+
