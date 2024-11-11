@@ -1,11 +1,9 @@
 
-# ukazatel na klass: prosto uid::get() ???
-# what if field-arrays having low and up-cased names ???? auto kill/autocopy
-# _::new should report about undefined class ???
-
+# add record about 'base' class (not for "" )
+# add log system
 
 #_________________________________________________________________
-# CLASS v1.0 ( 2024.11.9 ) #######################################
+# CLASS v1.0 ( 2024.11.11 ) ######################################
 #
 #	by digi_cs 2024
 #
@@ -37,14 +35,24 @@
 #
 #	   	NAMECLASS[ name ]			= class ptr
 #
+#		PARENTPTR[ index ]		= class ptr
+#
+#			this array used by parentptr() function
+#			normally it's having only one element:
+#
+#				PARENTPTR[ "" ]	= base class ptr
+#
+#					user may upgrade this pointer to implement higher base class
+#					as default
+#
 #	- local arrays:
 #
 #	   	_PREFIX[ ptr ]			= prefix
 #	   	_SUFFIX[ ptr ]			= suffix
 #
-#		_PFXSFX[ prefix SEP_ suffix ]	- srcptrs:
-#
 #		_SRCPTR[ ptr ]			= srcptr
+#
+#		_PFXSFX[ prefix SEP_ suffix ]	= srcptr
 #
 #		_PTRLIST[ srcptr ][ ... ]	free ptr list array
 #
@@ -53,6 +61,7 @@
 #	- special arrays:
 #
 #		_API
+#
 #		_APITAB
 #
 #		FUNC::TAB
@@ -61,61 +70,73 @@
 #
 #	- superglobal vars:
 #
+#		BASEPTR
+#
 #		ALLPTR			??? regex to match with any ptr (incl. classes??) ???
 #
 #		CLASSPTR			??? regex to match with class ptrs???
 #
 #	- other resources:
 #
-#		ERROR_OUT var and error-events
+#		BASE_PREFIX
 #
-#		BASEPTR (BASE_LEN, BASE_CS, BASE_PREFIX, BASE_SUFFIX)
+#		BASE_SUFFIX
+#
+#		ERROR_OUT
+#
+#		STDERR
+#
+#		NOTMETHODS_
+#
+#			type: regexp
+#
+#			functions in namespace "_": if func name ~ NOTMETHODS_
+#			then it's will be excluded from the api list in array _API
+#
+#		METHOD_SEP
+#
+#			the content of this var is included between class name and method name
+#			while seeking for a method-functions
+#
+#			METHOD_SEP must start by "::" 
 #
 #_________________________________________________________________
-func	envmod::class( C ) { #######################################
+func	envmod::base( C ) { ########################################
 
-	# environment registration: class
-	#
-	#_____________________________
+	C[ "ver" ]	= "100"
 
-	C[ "rq" ]		= "uid hid arr"
+	C[ "rq" ]	= "uid( 1.01 )	" \
+			  "hid( 1.01 )	" \
+			  "arr( 1.01 )	" }
 
-}#________________________________________________________________
-##################################################################
+@namespace   "base"
 
-@namespace   "class"
+BEGIN{
+
+	_init0() }
 
 #_________________________________________________________________
-BEGIN{ ###########################################################
+func	_init0( p,f,n,px,sx,pp,A ) { ###############################
 
-	init0()
+	if ( ! _init0_f ) {
 
-}#________________________________________________________________
-func	init0( p,f,n,px,sx,A ) { ###################################
+		ERROR_OUT		= _default( ERROR_OUT	, STDERR, "/dev/stderr" )
 
-	if ( ! init0_f ) {
-
-		init0_f = 1
-
-		STDERR		= _default( STDERR	, "/dev/stderr/" )
-
-		LIB			= "class"
-
-		ERROR_OUT		= "/dev/stderr"		# _default( ERROR_OUT	, STDERR )
-
-		librq( "uid" )
-		librq( "hid" )
-		librq( "arr" )
+		librq( "uid", "101" )
+		librq( "hid", "101"  )
+		librq( "arr", "101"  )
 
 		SEP_ 			= hid( "SEP_" )
 		#_______________________
 
-		BASEPTR		= _default( BASEPTR	, _getclassptr()	)
+		BASE_PREFIX		= _default( BASE_PREFIX	, "\x7F"		  )
+		BASE_SUFFIX		= _default( BASE_SUFFIX	, "\xC0\xC0\xFF"	  )
 
-		BASE_PREFIX		= _default( BASE_PREFIX	, "\x7F"		)
-		BASE_SUFFIX		= _default( BASE_SUFFIX	, "\xC0\xC0\xFF"	)
+		ALLPTR		= _default( ALLPTR	, "\x7F......\xFF"  )
 
-		ALLPTR		= _default( ALLPTR	, "\x7F......\xFF" )
+		METHOD_SEP		= _default( METHOD_SEP	, "::_" )
+
+		NOTMETHODS_		= _default( NOTMETHODS_ , "^_" )
 		#_______________________
 
 		for ( f in FUNCTAB )
@@ -133,15 +154,24 @@ func	init0( p,f,n,px,sx,A ) { ###################################
 				match( f, /^(([^:]*)::)?([A-Z_a-z][0-9A-Z_a-z]*)$/, A )
 
 				NAMESPACE[ A[ 2 ] ][ A[ 3 ] ] = "func" }
+		#_______________________
 		
-		_movaa( _API, NAMESPACE[ _letia( "_", NAMESPACE ) ] )
+		movaa( _API, NAMESPACE[ letia( "_", NAMESPACE ) ] )
 
+		for ( a in _API )
+
+			if ( a ~ NOTMETHODS_ )
+
+				delete _API[ a ]
 	#_______________________________________________
 	# BASE CLASS DEFINITION ########################
 
-		p	= BASEPTR
-
 		n	= ""
+
+		p	= getclassptr()
+		#_______________________
+
+		PARENTPTR[ n ]	= p
 
 		px	= BASE_PREFIX
 		sx	= BASE_SUFFIX
@@ -153,34 +183,85 @@ func	init0( p,f,n,px,sx,A ) { ###################################
 
 		_PREFIX[ p ]	= px
 		_SUFFIX[ p ]	= sx
-
-		f = px SEP_ sx
-
-		_PFXSFX[ f ]	= p
-
-		_SRCPTR[ p ]	= p
-
-		uid::setcnt( p, px, sx )
-
-		_defia( p, _PTRLIST )
 		#_________________
 
- 		f = "class::"
+ 		pp = p METHOD_SEP
 
-		FUNC::TAB[ p "::def" ]		= f "def"
-		FUNC::TAB[ p "::api" ]		= f "api"
-		FUNC::TAB[ p "::new" ]		= f "new"
-		FUNC::TAB[ p "::del" ]		= f "del" } }
+		f = "base" METHOD_SEP
+
+		FUNC::TAB[ pp "def" ]		= f "def"
+		FUNC::TAB[ pp "api" ]		= f "api"
+		FUNC::TAB[ pp "new" ]		= f "new"
+		FUNC::TAB[ pp "del" ]		= f "del"
+		#_________________
+
+		_SRCPTR[ p ] = pp = uid()
+
+		_PFXSFX[ px SEP_ sx ] = pp
+
+		uid::setcnt( pp, px, sx )
+
+		defia( pp, _PTRLIST )
+
+		_init0_f = 1 } }
+
+#_________________________________________________________________
+func	parentptr( pp, t, p2,p3,p4 ) { #############################
+
+	if ( ! isnull( pp )  ) {
+
+		if ( pp in PARENTPTR )
+
+			pp = PARENTPTR[ pp ]
+
+		if ( pp in CLASS )
+
+			return pp }
+
+	return error( t, message( "undefined! parent class: @1", pp ), p2,p3,p4 ) }
+
+#___________________________________________________________
+func	getclassptr() { ######################################
+
+	return uid() }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #_________________________________________________________________
 func	_::def( n, pp, px, sx ,a,ap ) { ############################
 
-	if ( ! init0_f )
+	if ( ! _init0_f )
 
-		init0()
+		_init0()
 	#_____________________________
 	#
-	#	_::def( name, parentptr, prefix, suffix, p2,p3 )
+	#	_::def( name, parentptr, prefix, suffix )
 	#
 	#	n		defined class name
 	#	pp		parent class ptr ( == "" (not undefined/untyped) - BASEPTR )
@@ -188,31 +269,11 @@ func	_::def( n, pp, px, sx ,a,ap ) { ############################
 	#	sx		uid suffix
 	#_____________________________
 
-	print
+	pp = parentptr( pp, "_::def( @2, @1 )", n )
 
-	switch ( typeof( pp ) ) {
+	a = n METHOD_SEP "def"
 
-		case "untyped":
-
-		case "undefined":
-
-			return def_err( "undefined! parent class: @2", n, null )
-
-		default:
-
-			if ( pp == "" )
-
-				pp = BASEPTR
-
-			if ( ! ( pp in CLASS ) )
-
-				return def_err( "undefined! parent class: @2", n, pp ) }
-
-	#_______________________
-
-	a = n "::def"
-
-	ap = pp "::def"
+	ap = pp METHOD_SEP "def"
 
 	if ( a in FUNC::TAB ) {
 
@@ -230,14 +291,8 @@ func	_::def( n, pp, px, sx ,a,ap ) { ############################
 
 	return @API( n, pp, px, sx ) }
 
-	#_____________________________
-
-	func	def_err( t, p0,p1,p2,p3 ) {
-
-		return error( "_::def( @1, " t " )", p0,p1,p2,p3 ) }
-
-	#_____________________________________________________
-	func	def( n, pp, px, sx ,p ) { ######################
+	#_________________________________________
+	func	_def( n, pp, px, sx ,p ) { #########
 
 		# base class definition routine
 		#
@@ -263,15 +318,20 @@ func	_::def( n, pp, px, sx ,a,ap ) { ############################
 			sx = _SUFFIX[ pp ]
 		#_________________
 
-		p = _getclassptr()
+		p = getclassptr()
+
+		# log( API "( " p ", " pp ", " n ", " px ", " sx " )" )
 
 		print API "( " p ", " pp ", " n ", " px ", " sx " )"
 
-		CLASS[ p ] = n
+		CLASS[ p ]		= n
 
-		NAMECLASS[ n ] = p
+		NAMECLASS[ n ]	= p
 
-		def_srcptr( p, pp, px, sx )
+		_PREFIX[ p ]	= px
+		_SUFFIX[ p ]	= sx
+
+		_SRCPTR[ p ]	= def_srcptr( p, pp, px, sx )
 
 		def_apinherit( p, pp )
 
@@ -281,24 +341,25 @@ func	_::def( n, pp, px, sx ,a,ap ) { ############################
 
 		func	def_srcptr( p, pp, px, sx ,t ) {
 
-			_PREFIX[ p ]	= px
-			_SUFFIX[ p ]	= sx
-
 			t = px SEP_ sx
 
 			if ( t in _PFXSFX )
 
-				_SRCPTR[ p ] = _PFXSFX[ t ]
+				return _PFXSFX[ t ]
 
-			else
+			p = uid()
 
-				uid::setcs( \
-					_letia( \
-						_PFXSFX[ t ] = _SRCPTR[ p ] = p, _PTRLIST ), px, sx, _SRCPTR[ pp ] ) }
+			_PFXSFX[ t ] = p
+
+			letia( p, _PTRLIST )
+
+			uid::setcs( p, px, sx, _SRCPTR[ pp ] )
+
+			return p }
 
 		#_______________________
 
-		func	def_apinherit( p, pp ,a,n,ac,ap ) {
+		func	def_apinherit( p, pp ,s,a,n,ac,ap ) {
 
 			# for each _API: define self-class or parent-inherited method functions 
 			#
@@ -306,19 +367,21 @@ func	_::def( n, pp, px, sx ,a,ap ) { ############################
 			#	pp		- parent class (ptr)
 			#_________________
 
+			s = METHOD_SEP
+
 			n = CLASS[ p ]
 
 			for ( a in _API ) {
 
-				ac = n "::" a					# ac	- classname::method
+				ac = n s a				# ac	- classname::_method
 
-				ap = pp "::" a					# ap	- parentptr::method
+				ap = pp s a				# ap	- parentptr::_method
 
 				if ( ac in FUNC::TAB ) {
 
 					ac = FUNC::TAB[ ac ]
 
-					FUNC::TAB[ p "::" a ] = ac
+					FUNC::TAB[ p s a ] = ac
 
 					if ( ap in FUNC::TAB )
 
@@ -330,36 +393,39 @@ func	_::def( n, pp, px, sx ,a,ap ) { ############################
 
 					if ( ap in FUNC::TAB )
 
-						FUNC::TAB[ p "::" a ] = FUNC::TAB[ ap ] } }
+						FUNC::TAB[ p s a ] = FUNC::TAB[ ap ] } }
+	#_____________________________
 
-		#_______________________
+	func	def_err( t, p1,p2,p3,p4 ) {
 
-		func	_getclassptr() {
+		return error( "_::def( @1, " t " )", p1,p2,p3,p4 ) }
 
-			return uid::get() }
+#_____________________________________________________
+func	_::api( p, a ) { ###############################
 
-#___________________________________________________________
-func	_::api( p, a ) { #####################################
+	if ( ! _init0_f )
 
-	if ( ! init0_f )
-
-		init0()
+		_init0()
 	#_____________________________
 	#
-	#	function (actually - method) for requesting method-functions
+	# method for requesting method-functions
 	#
-	#	returns true in case if superglobvar API contains physical
-	#	method-function name that's should be called to invoke a method
+	#	p	- (ptr) pointer that's should be method applied
 	#
-	#	isapi( ptr, method )
+	#	a	- (method) name of requested method
+	#
+	#	returns true in case if API contains physical
+	#	method-function name that's should be called to invoke a method `a
+	#
+	#	_::api( ptr, method )
 	#
 	#		request api-method for specified pointer/classptr
 	#
-	#	isapi( f )
+	#	_::api( p )
 	#
-	#		parent method request using content of the given parameter f
+	#		parent method request using content of the given parameter p
 	#
-	#	isapi()
+	#	_::api()
 	#
 	#		parent method request using content of the superglobvar API
 	#
@@ -379,15 +445,15 @@ func	_::api( p, a ) { #####################################
 
 		PTR = p
 
-		if ( p "::api" in FUNC::TAB )
+		if ( p METHOD_SEP "api" in FUNC::TAB )
 
-			API = FUNC::TAB[ p "::api" ]
+			API = FUNC::TAB[ p METHOD_SEP "api" ]
 
 		else
 
 			if ( p in PARENT )
 
-				API = FUNC::TAB[ PARENT[ p ] "::api" ]
+				API = FUNC::TAB[ PARENT[ p ] METHOD_SEP "api" ]
 
 			else
 
@@ -395,8 +461,8 @@ func	_::api( p, a ) { #####################################
 
 		return API = @API( p, a ) } }
 
-	#_______________________________________________
-	func	api( p, a ) { ############################
+	#_________________________________________
+	func	_api( p, a ) { #####################
 
 		# request api-method for specified pointer/classptr
 		#
@@ -405,65 +471,38 @@ func	_::api( p, a ) { #####################################
 
 		print API "( " p ", " a " )"
 
-		if ( p "::" a in FUNC::TAB )
+		METHOD = a
 
-			return FUNC::TAB[ p "::" a ]
+		if ( p METHOD_SEP a in FUNC::TAB )
+
+			return FUNC::TAB[ p METHOD_SEP a ]
 
 		if ( p in PARENT )
 
-			if ( ( p = PARENT[ p ] "::" a ) in FUNC::TAB )
+			if ( ( p = PARENT[ p ] METHOD_SEP a ) in FUNC::TAB )
 
 				return FUNC::TAB[ p ] }
 
-		#___________________________________
-		func	isapi( p, a ) { ##############
+#_____________________________________________________
+func	_::new( pp, p ,e ) { ###########################
 
-			return _::api( p, a ) }
+	if ( ! _init0_f )
 
-#___________________________________________________________
-func	_::new( pp, p ) { ####################################
-
-	if ( ! init0_f )
-
-		init0()
+		_init0()
 	#_____________________________
 	#
 	#	create new ptr of the class pp
 	#	if pp == "" then pp = BASEPTR
 	#_____________________________
 
-	switch ( typeof( pp ) ) {
+	e = "_::new( @1 )"
 
-		case "undefined":
+	pp = parentptr( pp, e )
 
-		case "untyped":
+	return runapi1( pp, "new", e, p ) }
 
-			break
-
-		default:
-
-			if ( pp == "" )
-
-				pp = BASEPTR
-
-			if ( ! ( pp in CLASS ) )
-
-				break
-
-			if ( isapi( pp, "new" ) )
-
-				return @API( pp, p ) }
-
-	return new_err( "undefined parent class: @1", pp ) }
-
-	#_____________________________
-
-	func	new_err( t, p0,p1,p2,p3 ) {
-
-		return error( "_::new( " t " )", p0,p1,p2,p3 ) }
-
-	#_______________________________________________
-	func	new( pp, p ,cp ) { #######################
+	#_________________________________________
+	func	_new( pp, p ,cp ) { ################
 
 		# create pointer of the class `pp (ptr)
 		#
@@ -476,7 +515,7 @@ func	_::new( pp, p ) { ####################################
 
 		print API "( " pp ", " p " )"
 
-		if ( p == "" ) {
+		if ( isnull( p ) ) {
 
 			cp = _SRCPTR[ pp ]
 
@@ -488,31 +527,31 @@ func	_::new( pp, p ) { ####################################
 
 			else
 
-				p = uid::get( cp ) }
+				p = uid( cp ) }
 
 		PARENT[ p ] = pp
 
 		return p }
 
-#___________________________________________________________
-func	_::del( p ) { ########################################
+#_____________________________________________________
+func	_::del( p ) { ##################################
 
-	if ( ! init0_f )
+	if ( ! _init0_f )
 
-		init0()
+		_init0()
 	#_____________________________
 	#
 	#	delete pointer p
 	#_____________________________
 
-	if ( isapi( p, "del" ) )
+	return runapi0( p, "del", "_::del( @1 )" ) }
 
-		return @API( p ) }
+	#_________________________________________
+	func	_del( p ,pp ) { ####################
 
-	#_______________________________________________
-	func	del( p ,pp ) { ###########################
-
-		# delete pointer
+		# delete pointer base method
+		#
+		#	returns null
 		#
 		#	p	ptr
 		#_______________________
@@ -527,60 +566,117 @@ func	_::del( p ) { ########################################
 
 		_PTRLIST[ pp ][ _PTRLIST[ pp ][ "" ] = p ] = _PTRLIST[ pp ][ "" ] }
 
-#_________________________________________________________________
-func	typeof( p ) { ##############################################
+#___________________________________________________________
+func	librq( n, v ) { ######################################
+
+	if ( ! islib( n ) )
+
+		return error( "@1 library requires @2 library", "base", n ) }
+
+	#_____________________________
+
+	func	islib( n ) {
+
+		return ( "envmod::" n ) in FUNCTAB }
+
+#_____________________________________________________
+func	error( t, p1,p2,p3,p4, e ) { ###################
+
+	if ( t == "" )
+
+		t = "@1"
+
+	ERRNO = message( t, p1,p2,p3,p4 )
+
+	if ( isnull( e ) )
+
+		e = ERROR_OUT
+
+	if ( e ) {
+
+		ERRNO = "fatal: " ERRNO
+
+		print ERRNO >> e
+
+		fflush( e )
+		
+		exit }
+
+	ERRNO = "error: " ERRNO }
+
+	#_______________________
+
+	func	message( t, p1,p2,p3,p4 ) {
+
+		gsub( /@1/, msg_0( p1 ), t )
+		gsub( /@2/, msg_0( p2 ), t )
+		gsub( /@3/, msg_0( p3 ), t )
+		gsub( /@4/, msg_0( p4 ), t )
+
+		gsub( /!/, "", t )
+
+		return t }
+		#_________________
+
+		func	msg_0( p ) {
+
+			switch ( typeof( p ) ) {
+
+				case "untyped":
+
+					return "-"
+
+				case "array":
+
+					return "A[]"
+
+				case "undefined":
+
+					return "-"
+
+				default:
+
+					return p "" } }
+
+#_____________________________________________________
+func	typeof( p ) { ##################################
 
 	return awk::typeof( p ) }
 
-#_____________________________________________________
-func	typeofu( p ) { #################################
-
-	switch ( typeof( p ) ) {
-
-		case "untyped":
-
-		case "undefined":
-
-			return "untyped"
-
-		default:
-
-			return typeof( p ) } }
-
-
-
-
-
-
-#_____________________________________________________
-func	patsplit( t, A, r, B ) { #######################
+#_______________________________________________
+func	patsplit( t, A, r, B ) { #################
 
 	return awk::patsplit( t, A, r, B ) }
 
-#___________________________________________________________
-func	_movaa( D, S ) { #####################################
+#_____________________________________________________
+func	movaa( D, S ) { ################################
 
 	return mov::aa( D, S ) }
 
-#_____________________________________________________
-func	_defia( i, A ) { ###############################
+#_______________________________________________
+func	defia( i, A ) { ##########################
 
 	return def::ia( p, A ) }
 
-#_____________________________________________________
-func	_letia( i, A ) { ###############################
+#_______________________________________________
+func	letia( i, A ) { ##########################
 
 	return let::ia( i, A ) }
 
 #_____________________________________________________
-func	_defiai( d, A, s ) { ###########################
+func	isapi( p, a ) { ################################
 
-	return def::iai( d, A, s ) }
+	return _::api( p, a ) }
 
-#_____________________________________________________
-func	_default( v, dv ) { ############################
+#_______________________________________________
+func	uid( pp ) { ##############################
 
-	return isnull( v ) ? dv : v }
+	return uid::get( pp ) }
+
+#_______________________________________________
+func	hid( n, c ) { ############################
+
+	return hid::get( n, c ) }
 
 #_____________________________________________________
 func	isnull( p ) { ##################################
@@ -597,92 +693,209 @@ func	isnull( p ) { ##################################
 
 			return "U" } }
 
-#___________________________________________________________
-func	hid( n, c ) { ########################################
+#_______________________________________________
+func	_default( v, dv, dv2 ) { #################
 
-	if ( "hid::get" in FUNCTAB )
+	if ( isnull( v ) )
 
-		return hid::get( n, c )
+		if ( isnull( dv ) )
 
-	if ( n == "" )
+			return dv2
 
-		n = "HID" ++_hid_cnt
+		else
 
-	if ( n in hid::_NAMECODE )
+			return dv
 
-		return hid::_NAMECODE[ n ]
-
-	if ( c == "" )
-
-		c = "\xFE" n "\xFE"
-
-	hid::_NAMECODE[ HID[ c ] = n ] = c
-
-	return c }
-
-#___________________________________________________________
-func	error( t, p0,p1,p2,p3 ,e ) { #########################
-
-	ERRNO = message( t, p0,p1,p2,p3 )
-
-	if ( e = ERROR_OUT ) {
-
-		ERRNO = "fatal: " ERRNO
-
-		print ERRNO >> e
-
-		fflush( e )
-		
-		exit }
-
-	ERRNO = "error: " ERRNO }
-
-#_____________________________________________________
-func	message( t, p0,p1,p2,p3 ) { ####################
-
-	gsub( /@1/, msg_0( p0 ), t )
-	gsub( /@2/, msg_0( p1 ), t )
-	gsub( /@3/, msg_0( p2 ), t )
-	gsub( /@4/, msg_0( p3 ), t )
-
-	gsub( /!/, "", t )
-
-	return t }
-	#_____________________________
-
-	func	msg_0( p ) {
-
-		switch ( awk::typeof( p ) ) {
-
-			case "untyped":
-
-				return "-"
-
-			case "array":
-
-				return "A[]"
-
-			case "undefined":
-
-				return "-"
-
-			default:
-
-				return p "" } }
-
-#___________________________________________________________
-func	librq( n ) { #########################################
-
-	if ( ! islib( n ) )
-
-		return error( "@1 library requires @2 library", LIB, n ) }
-
-	#_______________________________________________
-	func	islib( n ) { #############################
-
-		return "envmod::" n in FUNCTAB }
+	return v }
 
 #_________________________________________________________________
 ##################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#___________________________________________________________
+func	callapi4( p, a, p1,p2,p3,p4 ) { ######################
+
+	if ( _::api( p, a ) )
+
+		return @API( p, p1,p2,p3,p4 )
+
+	return p }
+	#___________________________________
+
+	func	callapi3( p, a, p1,p2,p3,p4 ) {
+
+		if ( _::api( p, a ) )
+
+			return @API( p, p1,p2,p3 )
+
+		return p }
+
+	#___________________________________
+
+	func	callapi2( p, a, p1,p2,p3,p4 ) {
+
+		if ( _::api( p, a ) )
+
+			return @API( p, p1,p2 )
+
+		return p }
+
+	#___________________________________
+
+	func	callapi1( p, a, p1,p2,p3,p4 ) {
+
+		if ( _::api( p, a ) )
+
+			return @API( p, p1 )
+
+		return p }
+	#___________________________________
+
+	func	callapi0( p, a, p1,p2,p3,p4 ) {
+
+		if ( _::api( p, a ) )
+
+			return @API( p )
+
+		return p }
+
+#___________________________________________________________
+func	runapi4( p, a, e, p1,p2,p3,p4 ) { ####################
+
+	if ( _::api( p, a ) )
+
+		return @API( p, p1,p2,p3,p4 )
+
+	return error( e, message( "@1::@2 api missed", p, a ), p1,p2,p3 ) }
+	#___________________________________
+
+	func	runapi3( p, a, e, p1,p2,p3,p4 ) {
+
+		if ( _::api( p, a ) )
+
+			return @API( p, p1,p2,p3 )
+
+		return error( e, message( "@1::@2 api missed", p, a ), p1,p2,p3 ) }
+	#___________________________________
+
+	func	runapi2( p, a, e, p1,p2,p3,p4 ) {
+
+		if ( _::api( p, a ) )
+
+			return @API( p, p1,p2 )
+
+		return error( e, message( "@1::@2 api missed", p, a ), p1,p2,p3 ) }
+	#___________________________________
+
+	func	runapi1( p, a, e, p1,p2,p3,p4 ) {
+
+		if ( _::api( p, a ) )
+
+			return @API( p, p1 )
+
+		return error( e, message( "@1::@2 api missed", p, a ), p1,p2,p3 ) }
+	#___________________________________
+
+	func	runapi0( p, a, e, p1,p2,p3,p4 ) {
+
+		if ( _::api( p, a ) )
+
+			return @API( p )
+
+		return error( e, message( "@1::@2 api missed", p, a ), p1,p2,p3 ) }
+
+#___________________________________________________________
+func	ppapi4( p, p1,p2,p3,p4 ) { ###########################
+
+	return callapi4( null, null, p, p1,p2,p3,p4 ) }
+	#___________________________________
+
+	func	ppapi3( p1,p2,p3,p4 ) {
+
+		return callapi3( null, null, p, p1,p2,p3,p4 ) }
+	#___________________________________
+
+	func	ppapi2( p1,p2,p3,p4 ) {
+
+		return callapi2( null, null, p, p1,p2,p3,p4 ) }
+	#___________________________________
+
+	func	ppapi1( p1,p2,p3,p4 ) {
+
+		return callapi1( null, null, p1,p2,p3,p4 ) }
+	#___________________________________
+
+	func	ppapi0( p1,p2,p3,p4 ) {
+
+		return callapi0( null, null, p1,p2,p3,p4 ) }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
