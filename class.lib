@@ -86,7 +86,7 @@
 #
 #		STDERR
 #
-#		NOTMETHODS_
+#		NOT_METHOD
 #
 #			type: regexp
 #
@@ -101,7 +101,7 @@
 #			METHOD_SEP must start by "::" 
 #
 #_________________________________________________________________
-func	envmod::base( C ) { ########################################
+func	envmod::class( C ) { #######################################
 
 	C[ "ver" ]	= "100"
 
@@ -109,16 +109,45 @@ func	envmod::base( C ) { ########################################
 			  "hid( 1.01 )	" \
 			  "arr( 1.01 )	" }
 
-@namespace   "base"
+@namespace "class"
 
 BEGIN{
 
-	_init0() }
+	BASE_NAMESPACE = "class"
+
+	init0() }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #_________________________________________________________________
-func	_init0( p,f,n,px,sx,pp,A ) { ###############################
+func	init0( p,f,n,px,sx,pp,A ) { ################################
 
-	if ( ! _init0_f ) {
+	if ( ! init0_f ) {
 
 		ERROR_OUT		= _default( ERROR_OUT	, STDERR, "/dev/stderr" )
 
@@ -129,14 +158,14 @@ func	_init0( p,f,n,px,sx,pp,A ) { ###############################
 		SEP_ 			= hid( "SEP_" )
 		#_______________________
 
-		BASE_PREFIX		= _default( BASE_PREFIX	, "\x7F"		  )
-		BASE_SUFFIX		= _default( BASE_SUFFIX	, "\xC0\xC0\xFF"	  )
+		BASE_PREFIX		= _default( BASE_PREFIX	, "\x7F"		 )
+		BASE_SUFFIX		= _default( BASE_SUFFIX	, "\xC0\xC0\xFF"	 )
 
-		ALLPTR		= _default( ALLPTR	, "\x7F......\xFF"  )
+		ALLPTR		= _default( ALLPTR	, "\x7F......\xFF" )
 
 		METHOD_SEP		= _default( METHOD_SEP	, "::_" )
 
-		NOTMETHODS_		= _default( NOTMETHODS_ , "^_" )
+		NOT_METHOD		= _default( NOT_METHOD , "^_" )
 		#_______________________
 
 		for ( f in FUNCTAB )
@@ -160,22 +189,21 @@ func	_init0( p,f,n,px,sx,pp,A ) { ###############################
 
 		for ( a in _API )
 
-			if ( a ~ NOTMETHODS_ )
+			if ( a ~ NOT_METHOD )
 
 				delete _API[ a ]
 	#_______________________________________________
 	# BASE CLASS DEFINITION ########################
 
-		n	= ""
-
-		p	= getclassptr()
-		#_______________________
-
-		PARENTPTR[ n ]	= p
+		n	= BASE_NAMESPACE
 
 		px	= BASE_PREFIX
 		sx	= BASE_SUFFIX
-		#_________________
+
+		p	= getclassptr()
+
+		PARENTPTR[ "" ]	= p
+		#_______________________
 
 		CLASS[ p ]		= n
 
@@ -185,9 +213,9 @@ func	_init0( p,f,n,px,sx,pp,A ) { ###############################
 		_SUFFIX[ p ]	= sx
 		#_________________
 
- 		pp = p METHOD_SEP
+		f = n METHOD_SEP
 
-		f = "base" METHOD_SEP
+ 		pp = p METHOD_SEP
 
 		FUNC::TAB[ pp "def" ]		= f "def"
 		FUNC::TAB[ pp "api" ]		= f "api"
@@ -195,7 +223,9 @@ func	_init0( p,f,n,px,sx,pp,A ) { ###############################
 		FUNC::TAB[ pp "del" ]		= f "del"
 		#_________________
 
-		_SRCPTR[ p ] = pp = uid()
+		pp = uid()
+
+		_SRCPTR[ p ] = pp
 
 		_PFXSFX[ px SEP_ sx ] = pp
 
@@ -203,33 +233,7 @@ func	_init0( p,f,n,px,sx,pp,A ) { ###############################
 
 		defia( pp, _PTRLIST )
 
-		_init0_f = 1 } }
-
-#_________________________________________________________________
-func	parentptr( pp, t, p2,p3,p4 ) { #############################
-
-	if ( ! isnull( pp )  ) {
-
-		if ( pp in PARENTPTR )
-
-			pp = PARENTPTR[ pp ]
-
-		if ( pp in CLASS )
-
-			return pp }
-
-	return error( t, message( "undefined! parent class: @1", pp ), p2,p3,p4 ) }
-
-#___________________________________________________________
-func	getclassptr() { ######################################
-
-	return uid() }
-
-
-
-
-
-
+		init0_f = 1 } }
 
 
 
@@ -254,161 +258,75 @@ func	getclassptr() { ######################################
 
 
 #_________________________________________________________________
-func	_::def( n, pp, px, sx ,a,ap ) { ############################
+func	_::def( n, pp, psx ,cm,pm ) { ##############################
 
-	if ( ! _init0_f )
+	if ( ! init0_f )
 
-		_init0()
+		init0()
 	#_____________________________
 	#
-	#	_::def( name, parentptr, prefix, suffix )
+	# (single) define new class `n
 	#
-	#	n		defined class name
-	#	pp		parent class ptr ( == "" (not undefined/untyped) - BASEPTR )
-	#	px		uid prefix
-	#	sx		uid suffix
+	#	with parent `pp
+	#	prefix/suffix determinated by `psx
 	#_____________________________
 
-	pp = parentptr( pp, "_::def( @2, @1 )", n )
+	if ( isnull( pp ) )
 
-	a = n METHOD_SEP "def"
+		return def_err( "parentptr not specified" )
 
-	ap = pp METHOD_SEP "def"
+	if ( pp in PARENTPTR )
 
-	if ( a in FUNC::TAB ) {
+		pp = PARENTPTR[ pp ]
 
-		API = FUNC::TAB[ a ]
+	if ( pp in CLASS ) {
 
-		if ( ap in FUNC::TAB )
+		cm = n METHOD_SEP "def"
 
-			if ( API != FUNC::TAB[ ap ] )
+		pm = pp METHOD_SEP "def"
 
-				_APITAB[ API ] = FUNC::TAB[ ap ] }
+		if ( cm in FUNC::TAB ) {
+
+			API = FUNC::TAB[ cm ]
+
+			if ( pm in FUNC::TAB )
+
+				if ( API != FUNC::TAB[ pm ] )
+
+					_APITAB[ API ] = FUNC::TAB[ pm ] }
+
+		else
+
+			if ( pm in FUNC::TAB )
+
+				API = FUNC::TAB[ cm ] = FUNC::TAB[ pm ]
+
+			else
+
+				API = null
+
+		if ( API )
+
+			return @API( n, pp, psx )
+
+		else
+
+			return def_err( "@2: def method missed", n, pp ) }
 
 	else
 
-		API = FUNC::TAB[ a ] = FUNC::TAB[ ap ]
+		return def_err( "undefined parentptr: @2", n, pp ) }
 
-	return @API( n, pp, px, sx ) }
-
-	#_________________________________________
-	func	_def( n, pp, px, sx ,p ) { #########
-
-		# base class definition routine
-		#
-		#	n		defined class name
-		#	pp		parent class ptr
-		#	px		uid prefix
-		#	sx		uid suffix
-		#
-		#	_::def( "name", parentptr, prefix, suffix )
-		#_______________________
-
-		if ( n in NAMECLASS )
-
-			return def_err( "class name @1 redefinition!", n )
-		#_________________
-
-		if ( isnull( px ) )
-
-			px = _PREFIX[ pp ]
-
-		if ( isnull( sx ) )
-
-			sx = _SUFFIX[ pp ]
-		#_________________
-
-		p = getclassptr()
-
-		# log( API "( " p ", " pp ", " n ", " px ", " sx " )" )
-
-		print API "( " p ", " pp ", " n ", " px ", " sx " )"
-
-		CLASS[ p ]		= n
-
-		NAMECLASS[ n ]	= p
-
-		_PREFIX[ p ]	= px
-		_SUFFIX[ p ]	= sx
-
-		_SRCPTR[ p ]	= def_srcptr( p, pp, px, sx )
-
-		def_apinherit( p, pp )
-
-		return p }
-
-		#_______________________
-
-		func	def_srcptr( p, pp, px, sx ,t ) {
-
-			t = px SEP_ sx
-
-			if ( t in _PFXSFX )
-
-				return _PFXSFX[ t ]
-
-			p = uid()
-
-			_PFXSFX[ t ] = p
-
-			letia( p, _PTRLIST )
-
-			uid::setcs( p, px, sx, _SRCPTR[ pp ] )
-
-			return p }
-
-		#_______________________
-
-		func	def_apinherit( p, pp ,s,a,n,ac,ap ) {
-
-			# for each _API: define self-class or parent-inherited method functions 
-			#
-			#	p		- defined class (ptr)
-			#	pp		- parent class (ptr)
-			#_________________
-
-			s = METHOD_SEP
-
-			n = CLASS[ p ]
-
-			for ( a in _API ) {
-
-				ac = n s a				# ac	- classname::_method
-
-				ap = pp s a				# ap	- parentptr::_method
-
-				if ( ac in FUNC::TAB ) {
-
-					ac = FUNC::TAB[ ac ]
-
-					FUNC::TAB[ p s a ] = ac
-
-					if ( ap in FUNC::TAB )
-
-						if ( ac != ap = FUNC::TAB[ ap ] )
-
-							_APITAB[ ac ] = ap }
-
-				else
-
-					if ( ap in FUNC::TAB )
-
-						FUNC::TAB[ p s a ] = FUNC::TAB[ ap ] } }
-	#_____________________________
+	#_______________________
 
 	func	def_err( t, p1,p2,p3,p4 ) {
 
 		return error( "_::def( @1, " t " )", p1,p2,p3,p4 ) }
 
-#_____________________________________________________
-func	_::api( p, a ) { ###############################
+#___________________________________________________________
+func	_::api( p, a ) { #####################################
 
-	if ( ! _init0_f )
-
-		_init0()
-	#_____________________________
-	#
-	# method for requesting method-functions
+	# (single) method-request for method-functions
 	#
 	#	p	- (ptr) pointer that's should be method applied
 	#
@@ -443,8 +361,6 @@ func	_::api( p, a ) { ###############################
 
 	else {
 
-		PTR = p
-
 		if ( p METHOD_SEP "api" in FUNC::TAB )
 
 			API = FUNC::TAB[ p METHOD_SEP "api" ]
@@ -457,121 +373,458 @@ func	_::api( p, a ) { ###############################
 
 			else
 
-				return p
+				return error( "api missed" )
 
 		return API = @API( p, a ) } }
 
-	#_________________________________________
-	func	_api( p, a ) { #####################
+#___________________________________________________________
+func	_::new( pp, p ,q,i,s,P,D ) { #########################
 
-		# request api-method for specified pointer/classptr
-		#
-		#	isapi( ptr, method )
-		#_______________________
-
-		print API "( " p ", " a " )"
-
-		METHOD = a
-
-		if ( p METHOD_SEP a in FUNC::TAB )
-
-			return FUNC::TAB[ p METHOD_SEP a ]
-
-		if ( p in PARENT )
-
-			if ( ( p = PARENT[ p ] METHOD_SEP a ) in FUNC::TAB )
-
-				return FUNC::TAB[ p ] }
-
-#_____________________________________________________
-func	_::new( pp, p ,e ) { ###########################
-
-	if ( ! _init0_f )
-
-		_init0()
-	#_____________________________
+	# (multi/multipass) create new ptr `p of the class `pp
 	#
-	#	create new ptr of the class pp
-	#	if pp == "" then pp = BASEPTR
 	#_____________________________
 
-	e = "_::new( @1 )"
+	if ( isnull( pp ) )
 
-	pp = parentptr( pp, e )
+		return new_err( "parentptr not specified" )
 
-	return runapi1( pp, "new", e, p ) }
+	if ( pp in PARENTPTR )
 
-	#_________________________________________
-	func	_new( pp, p ,cp ) { ################
+		pp = PARENTPTR[ pp ]
+	#_______________________
 
-		# create pointer of the class `pp (ptr)
+	if ( pp in CLASS ) {
+
+		if ( _::api( pp, "new" ) )
+
+			return @API( pp, p )
+
+		return new_err( "@1: new method missed", pp ) }
+	#_______________________
+
+	do {
+
+		if ( q = patsplit( p, P, ALLPTR , D ) ) {
+
+			for ( i = 1; i <= q; i++ )
+
+				if ( ( s = P[ i ] ) in CLASS )
+
+					if ( _::api( s, "new" ) )
+
+						P[ i ] = @API( APIPTR )
+
+					else
+
+						return new_err( "@1: new method missed", pt ) }
+
+		else
+
+			return p
+
+				} while ( p != p = retab( P, D ) )
+
+	return p }
+	#_____________________________
+
+	func	new_err( t, p1,p2,p3,p4 ) {
+
+		return error( "_::new( " t " )", p1,p2,p3,p4 ) } 
+
+#___________________________________________________________
+func	_::del( p ,q,i,s,P,D ) { #############################
+
+	# (multi/multipass) delete `p
+	#
+	#_____________________________
+
+	if ( p in PARENT ) {
+
+		if ( _::api( p, "del" ) )
+
+			return @API( p )
+
+		return del_err( "@1: del method missed", p ) }
+	#_______________________
+
+	do {
+
+		if ( q = patsplit( p, P, ALLPTR , D ) ) {
+
+			for ( i = 1; i <= q; i++ )
+
+				of ( ( s = P[ i ] ) in PARENT )
+
+					if ( _::api( s, "del" ) )
+
+						P[ i ] = @API( APIPTR ) }
+
+		else
+
+			return p		
+
+				} while ( p != p = retab( P, D ) )
+
+	return p }
+	#_____________________________
+
+	func	del_err( t, p1,p2,p3,p4 ) {
+
+		return error( "_::del( " t " )", p1,p2,p3,p4 ) }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#___________________________________________________________
+func	_::w( p, t, p2,p3,p4,p5,p6,p7,p8 ) { #################
+
+	# (single) write ptr `p
+	#
+	#_____________________________
+
+	if ( isnull( p ) )
+
+		return w_err( "no pointer" )
+
+	if ( p in PARENTPTR )
+
+		p = PARENTPTR[ p ]
+
+	if ( p in CLASS )
+
+		p = _::new( p )
+
+	else
+
+		if ( ! ( p in PARENT ) )
+
+			return w_err( "bad pointer: @1", p )
+
+	if ( _::api( p, "w" ) )
+
+		return @API( APIPTR, t, p2,p3,p4,p5,p6,p7,p8 )
+
+	return p }
+	#_____________________________
+
+	func	w_err( t, p1,p2,p3,p4 ) {
+
+		return error( "_::w( " t " )", p1,p2,p3,p4 ) }
+
+#___________________________________________________________
+func	_::r( p, p1,p2,p3,p4,p5,p6,p7,p8 ,q,i,s,P,D ) { ######
+
+	# (multi/multipass) read `p
+	#
+	#_____________________________
+
+	if ( p in PARENT )
+
+		if ( _::api( p, "r" ) )
+
+			return @API( APIPTR, p1,p2,p3,p4,p5,p6,p7,p8 )
+
+		else
+
+			return p
+	#_______________________
+
+	do {
+
+		if ( q = patsplit( p, P, ALLPTR , D ) ) {
+
+			for ( i = 1; i <= q; i++ )
+
+				if ( ( s = P[ i ] ) in PARENT )
+
+					if ( _::api( s, "r" ) )
+
+						P[ i ] = @API( APIPTR, p1,p2,p3,p4,p5,p6,p7,p8 ) }
+
+		else
+
+			return p		
+
+				} while ( p != p = retab( P, D ) )
+
+	return p }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#_________________________________________________________________
+func	_def( n, pp, px ,p,sx ) { ##################################
+
+	print API "( " n ", " pp ", " px " )"
+
+	#_______________________
+	#
+	# base class definition
+	#
+	#	n		defined class name
+	#	pp		parent class ptr
+	#	px		prefix/suffix str
+	#_______________________
+
+	if ( n in NAMECLASS )
+
+		return def_err( "class name @1 redefinition!", n )
+	#_________________
+
+	p = n "::init0"
+
+	if ( p in FUNC::TAB ) {
+
+		p = FUNC::TAB[ p ]
+
+		@p() }
+	#_________________
+
+	def_psfx( px, pp ) 
+
+	px = PFX_; sx = SFX_
+	#_________________
+
+	p = getclassptr()
+
+	CLASS[ p ]		= n
+
+	NAMECLASS[ n ]	= p
+
+	_PREFIX[ p ]	= px
+	_SUFFIX[ p ]	= sx
+
+	_SRCPTR[ p ]	= def_srcptr( p, pp, px, sx )
+
+	def_apinherit( p, pp )
+
+	return p }
+	#_______________________
+
+	func	def_psfx( t, pp ,P ) {
+
+		if ( t == "" )
+
+			t = ".|."
+
+		if ( 1 == split( t, P, /\|/ ) ) {
+
+			PFX_ = _PREFIX[ pp ]
+
+			SFX_ = t }
+
+		else {
+
+			PFX_ = def_psfx_0( P[ 1 ], _PREFIX[ pp ] )
+
+			SFX_ = def_psfx_0( P[ 2 ], _SUFFIX[ pp ] ) } }
+		#___________
+
+		func	def_psfx_0( p, pp ) {
+
+			return p == "." ? pp : p }
+	#_______________________
+
+	func	def_srcptr( p, pp, px, sx ,t ) {
+
+		t = px SEP_ sx
+
+		if ( t in _PFXSFX )
+
+			return _PFXSFX[ t ]
+
+		p = uid()
+
+		_PFXSFX[ t ] = p
+
+		letia( p, _PTRLIST )
+
+		uid::setcs( p, px, sx, _SRCPTR[ pp ] )
+
+		return p }
+	#_______________________
+
+	func	def_apinherit( p, pp ,s,a,n,ac,ap ) {
+
+		# for each _API: define self-class or parent-inherited method functions 
 		#
-		#	returns ptr to the newly created ponter
-		#
-		#	pp	classptr
-		#
-		#	p	if != "" then p will be exact pointer string
-		#_______________________
+		#	p		- defined class (ptr)
+		#	pp		- parent class (ptr)
+		#___________
 
-		print API "( " pp ", " p " )"
+		s = METHOD_SEP
 
-		if ( isnull( p ) ) {
+		n = CLASS[ p ]
 
-			cp = _SRCPTR[ pp ]
+		for ( a in _API ) {
 
-			if ( "" != p = _PTRLIST[ cp ][ "" ] ) {
+			ac = n s a				# ac	- classname::_method
 
-				_PTRLIST[ cp ][ "" ] = _PTRLIST[ cp ][ p ]
+			ap = pp s a				# ap	- parentptr::_method
 
-				delete _PTRLIST[ cp ][ p ] }
+			if ( ac in FUNC::TAB ) {
+
+				ac = FUNC::TAB[ ac ]
+
+				FUNC::TAB[ p s a ] = ac
+
+				if ( ap in FUNC::TAB )
+
+					if ( ac != ap = FUNC::TAB[ ap ] )
+
+						_APITAB[ ac ] = ap }
 
 			else
 
-				p = uid( cp ) }
+				if ( ap in FUNC::TAB )
 
-		PARENT[ p ] = pp
+					FUNC::TAB[ p s a ] = FUNC::TAB[ ap ] } }
+	#_______________________
 
-		return p }
+	func	getclassptr() {
 
-#_____________________________________________________
-func	_::del( p ) { ##################################
-
-	if ( ! _init0_f )
-
-		_init0()
-	#_____________________________
-	#
-	#	delete pointer p
-	#_____________________________
-
-	return runapi0( p, "del", "_::del( @1 )" ) }
-
-	#_________________________________________
-	func	_del( p ,pp ) { ####################
-
-		# delete pointer base method
-		#
-		#	returns null
-		#
-		#	p	ptr
-		#_______________________
-
-		print API "( " p " )"
-
-		pp = PARENT[ p ]
-
-		delete PARENT[ p ]
-
-		pp = _SRCPTR[ pp ]
-
-		_PTRLIST[ pp ][ _PTRLIST[ pp ][ "" ] = p ] = _PTRLIST[ pp ][ "" ] }
+		return uid() }
 
 #___________________________________________________________
-func	librq( n, v ) { ######################################
+func	_api( p, a ) { #######################################
+
+	# request api-method for specified pointer/classptr
+	#
+	#	isapi( ptr, method )
+	#_______________________
+
+	print API "( " p ", " a " )"
+
+	APIPTR = p
+
+	if ( p METHOD_SEP a in FUNC::TAB )
+
+		return FUNC::TAB[ p METHOD_SEP a ]
+
+	if ( p in PARENT )
+
+		if ( ( p = PARENT[ p ] METHOD_SEP a ) in FUNC::TAB )
+
+			return FUNC::TAB[ p ] }
+
+#___________________________________________________________
+func	_new( pp, p ,cp ) { ##################################
+
+	# create pointer `p of the class `pp
+	#
+	#	returns ptr to the newly created ponter
+	#
+	#	if pp == "" then pp = PARENTPTR[ "" ] (base method)
+	#
+	#	if pp is not defined class then perform error:
+	#
+	#		undefined parent class: pp
+	#
+	#	if p != "" then p will be exact pointer to the created object
+	#
+	#	if p == "" then p will be generated 
+	#_______________________
+
+	print API "( " pp ", " p " )"
+
+	if ( p == "" ) {
+
+		cp = _SRCPTR[ pp ]
+
+		if ( "" != p = _PTRLIST[ cp ][ "" ] ) {
+
+			_PTRLIST[ cp ][ "" ] = _PTRLIST[ cp ][ p ]
+
+			delete _PTRLIST[ cp ][ p ] }
+
+		else
+
+			p = uid( cp ) }
+
+	PARENT[ p ] = pp
+
+	return p }
+
+#___________________________________________________________
+func	_del( p ,pp ) { ######################################
+
+	# delete pointer ptr
+	#
+	#	returns null
+	#
+	#	p	ptr
+	#_______________________
+
+	print API "( " p " )"
+
+	pp = PARENT[ p ]
+
+	delete PARENT[ p ]
+
+	pp = _SRCPTR[ pp ]
+
+	_PTRLIST[ pp ][ _PTRLIST[ pp ][ "" ] = p ] = _PTRLIST[ pp ][ "" ] }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#_________________________________________________________________
+func	librq( n, v ) { ############################################
 
 	if ( ! islib( n ) )
 
-		return error( "@1 library requires @2 library", "base", n ) }
+		return error( "class library requires @1 library", n ) }
 
 	#_____________________________
 
@@ -595,6 +848,8 @@ func	error( t, p1,p2,p3,p4, e ) { ###################
 	if ( e ) {
 
 		ERRNO = "fatal: " ERRNO
+
+		ORS = "\x0A"				# ??? EOL???
 
 		print ERRNO >> e
 
@@ -662,6 +917,10 @@ func	defia( i, A ) { ##########################
 func	letia( i, A ) { ##########################
 
 	return let::ia( i, A ) }
+#_____________________________________________________
+func	retab( A, B ) { ################################
+
+	return ret::ab( A, B ) }
 
 #_____________________________________________________
 func	isapi( p, a ) { ################################
@@ -710,192 +969,5 @@ func	_default( v, dv, dv2 ) { #################
 
 #_________________________________________________________________
 ##################################################################
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#___________________________________________________________
-func	callapi4( p, a, p1,p2,p3,p4 ) { ######################
-
-	if ( _::api( p, a ) )
-
-		return @API( p, p1,p2,p3,p4 )
-
-	return p }
-	#___________________________________
-
-	func	callapi3( p, a, p1,p2,p3,p4 ) {
-
-		if ( _::api( p, a ) )
-
-			return @API( p, p1,p2,p3 )
-
-		return p }
-
-	#___________________________________
-
-	func	callapi2( p, a, p1,p2,p3,p4 ) {
-
-		if ( _::api( p, a ) )
-
-			return @API( p, p1,p2 )
-
-		return p }
-
-	#___________________________________
-
-	func	callapi1( p, a, p1,p2,p3,p4 ) {
-
-		if ( _::api( p, a ) )
-
-			return @API( p, p1 )
-
-		return p }
-	#___________________________________
-
-	func	callapi0( p, a, p1,p2,p3,p4 ) {
-
-		if ( _::api( p, a ) )
-
-			return @API( p )
-
-		return p }
-
-#___________________________________________________________
-func	runapi4( p, a, e, p1,p2,p3,p4 ) { ####################
-
-	if ( _::api( p, a ) )
-
-		return @API( p, p1,p2,p3,p4 )
-
-	return error( e, message( "@1::@2 api missed", p, a ), p1,p2,p3 ) }
-	#___________________________________
-
-	func	runapi3( p, a, e, p1,p2,p3,p4 ) {
-
-		if ( _::api( p, a ) )
-
-			return @API( p, p1,p2,p3 )
-
-		return error( e, message( "@1::@2 api missed", p, a ), p1,p2,p3 ) }
-	#___________________________________
-
-	func	runapi2( p, a, e, p1,p2,p3,p4 ) {
-
-		if ( _::api( p, a ) )
-
-			return @API( p, p1,p2 )
-
-		return error( e, message( "@1::@2 api missed", p, a ), p1,p2,p3 ) }
-	#___________________________________
-
-	func	runapi1( p, a, e, p1,p2,p3,p4 ) {
-
-		if ( _::api( p, a ) )
-
-			return @API( p, p1 )
-
-		return error( e, message( "@1::@2 api missed", p, a ), p1,p2,p3 ) }
-	#___________________________________
-
-	func	runapi0( p, a, e, p1,p2,p3,p4 ) {
-
-		if ( _::api( p, a ) )
-
-			return @API( p )
-
-		return error( e, message( "@1::@2 api missed", p, a ), p1,p2,p3 ) }
-
-#___________________________________________________________
-func	ppapi4( p, p1,p2,p3,p4 ) { ###########################
-
-	return callapi4( null, null, p, p1,p2,p3,p4 ) }
-	#___________________________________
-
-	func	ppapi3( p1,p2,p3,p4 ) {
-
-		return callapi3( null, null, p, p1,p2,p3,p4 ) }
-	#___________________________________
-
-	func	ppapi2( p1,p2,p3,p4 ) {
-
-		return callapi2( null, null, p, p1,p2,p3,p4 ) }
-	#___________________________________
-
-	func	ppapi1( p1,p2,p3,p4 ) {
-
-		return callapi1( null, null, p1,p2,p3,p4 ) }
-	#___________________________________
-
-	func	ppapi0( p1,p2,p3,p4 ) {
-
-		return callapi0( null, null, p1,p2,p3,p4 ) }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

@@ -7,11 +7,19 @@ BEGIN{
 
 	PARENTPTR[ "" ]		= _::def( "xclass", "" ) }
 
+func	init0() {
+
+	print "XCLASS INIT0"
+
+	}
+
 
 
 func	_def( n, pp, px, sx ,p ) {				# classname::def
 
-	p = ppapi4( n, pp, px, sx )
+	_::api()
+
+	p = @API( n, pp, px, sx )
  
 	print "xclass def method !!!!!!!!!!!!!!!"
 
@@ -21,15 +29,6 @@ func	_def( n, pp, px, sx ,p ) {				# classname::def
 
 #_________________________________________________________________
 ##################################################################
-
-
-
-
-func	ppapi4( p1,p2,p3,p4,p5,p6,p7,p8 ) {
-
-	_::api()
-
-	return @API( p1,p2,p3,p4 ) }
 
 
 

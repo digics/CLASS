@@ -1,0 +1,167 @@
+
+
+	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/arr/_/ARR10/arr.lib"
+
+	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/uid/_/UID10/uid.lib"
+
+	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/str/_/STR10/str.lib"
+
+
+	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/class/_/CLASS10/class.lib"
+
+	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/class/_/CLASS10/xclass.lib"
+
+
+	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/class/_/CLASS10/tempFile.class"
+
+
+	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/class/_/CLASS10/Name.class"
+
+
+
+BEGIN{
+
+	print 
+
+	p1 = _::new( "" )
+
+	print "ptr1: " p1 "'"
+
+	print
+
+	p1 = _::new( "" )
+
+	print "ptr1: " p1 "'"
+
+	print
+
+	p2 = _::new( tempFile::ptr )
+
+	print "ptr2: " p2 "'"
+
+	print
+
+	p3 = _::new( Name::ptr )
+
+	print "ptr3: " p3 "'"
+
+
+
+	print "huj!!"
+
+	print dump::a( class::_API )
+
+
+	p4 = _::def( "huj", "" )
+
+	print "p4 parent: " p4 "'"
+
+
+	
+
+	p5 = _::new( p4 )
+
+	print "p5: " p5 "'"
+
+	print
+
+	t = "[" tempFile::ptr "]"
+
+	t = t t t t
+
+	print "before\t" t "'"
+
+	tt = _::new( t )
+
+	print "after\t" tt "'"
+
+	print
+
+	pp = _::w( Name::ptr, "huj" )
+
+	print "Name::ptr = " pp "'"
+
+	print
+
+	t = pp
+
+	pp = _::w( Name::ptr, "pizda" )
+
+	t = t " " pp
+
+	print "before\t" t "'"
+
+	tt = _::r( t )
+
+	print "after\t" tt "'"
+
+
+
+ }
+
+
+# replace BASEPTR object
+
+
+BEGIN{
+
+	print
+	print
+	print
+	print
+	print
+	print
+
+
+
+
+	print
+	print
+
+
+
+
+
+
+ }
+
+
+
+
+
+
+
+
+
+
+#_________________________________________________________________
+func	reta( A ) { ################################################
+
+	return ret::a( A ) }
+
+#___________________________________________________________
+func	retad( A, sa, q, i ) { ###############################
+
+	retuirn ret::ad( A, sa, q, i ) }
+
+#___________________________________________________________
+func	retas( A, t ) { ######################################
+
+	retuirn ret::as( A, t ) }
+
+#___________________________________________________________
+func	retab( A, B ) { ######################################
+
+	return ret::ab( A, B ) }
+
+
+func	dumpa( A, n ) {
+
+	return dump::a( A, n ) }
+
+
+
+
+
+
+
