@@ -9,23 +9,270 @@
 
 	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/class/_/CLASS10/class.lib"
 
-	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/class/_/CLASS10/xclass.lib"
+#	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/class/_/CLASS10/xclass.lib"
 
 
-	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/class/_/CLASS10/tempFile.class"
+#	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/class/_/CLASS10/tempFile.class"
 
 
-	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/class/_/CLASS10/Name.class"
+#	@include	"D:/CPU/DEV/PROJECT/ENV/awk/mod/class/_/CLASS10/Name.class"
+
+
+
+
+
+
+
+
+
+
+
+
+
+#____________________________________________________________________
+#####################################################################
+
+
+@namespace "lev1"
+
+BEGIN{
+
+
+	ptr = _::class( "lev1" )
+
+	}
+
+func	__new( pp, p ) {
+
+	print "lev1: new: in"
+
+	p = _::parent( pp, p )
+
+	print "lev1: new: out"
+
+
+	return p }
+
+
+func	__w( p, t ) {
+
+	print "lev1: w: in: " t "'"
+
+	_::parent( p, t )
+
+	print "lev1: w: out"
+
+
+
+	MAC[ p ] = t
+
+	MACSP[ p ] = 1
+
+	return p }
+
+
+func	__class( n, pp, px, D ,p ) {
+
+	print "lev1::class( " n ", " pp ", " px ",D ): in"
+
+	p = _::parent( n, pp, px, D )
+
+	print "lev1::class( ): out"
+
+	return p }
+
+#____________________________________________________________________
+#####################################################################
+
+@namespace "lev2"
+
+BEGIN{
+
+	ptr = _::class( "lev2", lev1::ptr )
+
+	}
+
+
+func	init0( p ) {
+
+	print "lev2 init0: in"
+
+
+	_::method( "w	ptr		, data, D,P,G,X,Y	" )
+
+	_::method( "aj	ptr					" )
+
+
+
+	print "lev2 init0: out"
+
+	}
+
+
+
+func	__new( pp, p ) {
+
+	print "lev2: new: in"
+
+	p = _::parent( pp, p )
+
+	print "lev2: new: out"
+
+
+	return p }
+
+
+
+func	__w( p, t, D,P,G,X,Y ) {
+
+	print "lev2: w: in"
+
+	_::parent( p, t )
+
+	print "lev2: w: out"
+
+	return p }
+
+
+
+
+
+
+func	__aj( p ) {
+
+	print "lev2: aj: in"
+
+	_::parent( p, t )
+
+	print "lev2: aj: out"
+
+	return p }
+
+
+
+
+func	_::aj( p, D,P,G,X,Y ) {
+
+	return _::api( "aj", p, D,P,G,X,Y ) }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#____________________________________________________________________
+#####################################################################
+
+	@namespace "awk"
+
+func	new( i ) {
+
+
+	r = _::new( SYMTAB[ i ] )
+
+	t = i " = " r "'"
+
+	return t "\x0A" }
+
+func	write( i, t ) {
+
+	r = _::w( SYMTAB[ i ], t )
+
+	t = i " = " r "'"
+
+	return t "\x0A" }
+
+func	aj( p, D,P,G,X,Y ) {
+
+	return _::aj( p, D,P,G,X,Y ) }
 
 
 
 BEGIN{
+
+	print; print; print
+
+
+	print "p1: " ( p1 = new( "lev1::ptr" ) ) "'"
+
+	print "p2: " ( p2 = new( "lev2::ptr" ) ) "'"
+
+
+
+
+
+	#print "lev1::p1 = " ( lev1::p1 = _::new( SYMTAB[ i lev1::ptr ) ) "'"; print
+
+	print write( "lev1::ptr", "lev1data" )
+
+	print write( "lev2::ptr", "lev2data" )
+
+
+
+	print; print; print
+
+	print dumpa( class::_APITARGET )
+	print dumpa( class::_APITYPE )
+	print dumpa( class::_API )
+
+	print dumpa( class::_APITAB )
+
+	print dumpa( FUNC::PARAM )
+
+	print dumpa( class::_CLASSES )
+
+
+#	print dumpa( FUNC::TAB, "~(_w|_new)$" )
+
+	print; print; print
+
+
+
+
+
+
+
+
+
+	exit
+
 
 	print 
 
 	p1 = _::new( "" )
 
 	print "ptr1: " p1 "'"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	exit
+
+
 
 	print
 
@@ -49,7 +296,6 @@ BEGIN{
 
 	print "huj!!"
 
-	print dump::a( class::_API )
 
 
 	p4 = _::def( "huj", "" )
@@ -89,11 +335,33 @@ BEGIN{
 
 	t = t " " pp
 
-	print "before\t" t "'"
+	print "before\t'" t "'"
 
-	tt = _::r( t )
+	#print "DEL: " _::del( t ) "'"
 
-	print "after\t" tt "'"
+	
+
+	print "R: " ( tt = _::r( t ) ) "'"
+
+	print
+
+	print dump::a( FUNC::PARAM )
+
+	print
+
+	print dump::a( class::_APITAB )
+
+	print
+
+
+	print "copy: " ( ttt = _::dup( t ) ) "'"
+
+	print
+
+	print "read: " _::r( ttt ) "'"
+
+	print
+
 
 
 
